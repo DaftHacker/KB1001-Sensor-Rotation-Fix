@@ -1,5 +1,11 @@
-KB1001 Sensor Rotation Fix
-===========================
+=====================================================================
+  LINEAGEOS AUTO-ROTATION FIX FOR KB1001 / KB1001A
+  Allwinner A333 (sun65iw1p1 / sunxi)
+=====================================================================
+
+This Magisk module fixes incorrect auto-rotation on the KB1001 / KB1001A
+tablet running LineageOS on the Allwinner A333 (sun65iw1p1 / sunxi)
+platform.
 
 This module persists the exact live-tested fix that corrected auto-rotation:
 
