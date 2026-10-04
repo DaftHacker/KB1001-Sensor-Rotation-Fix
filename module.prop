@@ -1,0 +1,6 @@
+id=kb1001_sensor_rotation_fix
+name=KB1001 Sensor Rotation Fix
+version=1.0
+versionCode=1
+author=dafthacker
+description=Persist the working Allwinner G-sensor rotation fix for KB1001 without changing display/touch orientation.
