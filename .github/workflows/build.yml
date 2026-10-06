@@ -1,0 +1,86 @@
+name: Build KB1001 Sensor Rotation Fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'module.prop'
+      - 'post-fs-data.sh'
+      - 'system.prop'
+      - 'README.txt'
+      - '.github/workflows/build.yml'
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kb1001-sensor-rotation-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate module
+        shell: bash
+        run: |
+          sh -n post-fs-data.sh
+          grep -q '^id=' module.prop
+          grep -q '^name=' module.prop
+          grep -q '^version=' module.prop
+          grep -q '^versionCode=' module.prop
+          grep -q '^ro.vendor.gsi_gsen_rotation=180$' system.prop
+          grep -q '^ro.vendor.sf.rotation=90$' system.prop
+
+      - name: Build Magisk module ZIP
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^version=//p' module.prop | head -n1)"
+          [ -n "$VERSION" ] || VERSION="dev.${GITHUB_RUN_NUMBER}"
+          ASSET="KB1001-Sensor-Rotation-Fix-${VERSION}.zip"
+          mkdir -p dist/module
+          cp module.prop post-fs-data.sh system.prop README.txt dist/module/
+          chmod 0755 dist/module/post-fs-data.sh
+          (cd dist/module && zip -r "../${ASSET}" . >/dev/null)
+          sha256sum "dist/${ASSET}" > "dist/${ASSET}.sha256"
+          echo "ASSET=${ASSET}" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb1001-sensor-rotation-fix
+          path: |
+            dist/${{ env.ASSET }}
+            dist/${{ env.ASSET }}.sha256
+
+      - name: Publish rolling Magisk ZIP
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          NOTES="Rolling KB1001/KB1001A sensor rotation Magisk module for the verified Allwinner A333 / sun65iw1p1 platform."
+
+          if gh release view dev-latest >/dev/null 2>&1; then
+            gh release edit dev-latest --title "KB1001 Sensor Rotation Fix - Development" --notes "$NOTES"
+          else
+            gh release create dev-latest --title "KB1001 Sensor Rotation Fix - Development" --notes "$NOTES" --prerelease
+          fi
+
+          gh release upload dev-latest "dist/$ASSET" "dist/$ASSET.sha256" --clobber
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "# KB1001 Sensor Rotation Fix"
+            echo
+            echo "Installable Magisk module: \`${ASSET}\`"
+            echo
+            echo "Target: **KB1001 / Allwinner A333 / sun65iw1p1**"
+          } >> "$GITHUB_STEP_SUMMARY"
